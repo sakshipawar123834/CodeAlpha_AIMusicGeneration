@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Music Studio · Composer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.27/build/Midi.min.js"></script>
+</head>
+<body class="studio-page">
+  <div class="app">
+    <nav class="top-nav">
+      <div class="nav-brand">
+        <span class="nav-logo">♪</span>
+        <span class="nav-title">AI Music Studio</span>
+      </div>
+      <div class="nav-actions">
+        <button class="nav-btn" id="saveMidiTopBtn" title="Save MIDI">
+          <span>⬇</span> <span class="nav-btn-label">Export</span>
+        </button>
+        <div class="profile-menu">
+          <button class="profile-trigger" id="profileTrigger">
+            <div class="avatar" id="navAvatar">U</div>
+            <span class="profile-name" id="navUserName">User</span>
+            <span class="profile-chevron">▾</span>
+          </button>
+          <div class="profile-dropdown" id="profileDropdown">
+            <div class="dropdown-header">
+              <div class="avatar avatar-lg" id="dropdownAvatar">U</div>
+              <div>
+                <div class="dropdown-name" id="dropdownName">User Name</div>
+                <div class="dropdown-email" id="dropdownEmail">user@example.com</div>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-stats">
+              <div class="stat-item">
+                <span class="stat-value" id="statTotalGenerated">0</span>
+                <span class="stat-label">Generated</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value" id="statSaved">0</span>
+                <span class="stat-label">Exports</span>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" id="editProfileBtn">
+              <span>✎</span> Edit Profile
+            </button>
+            <button class="dropdown-item" id="clearHistoryBtn">
+              <span>🗑</span> Clear History
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item danger" id="logoutBtn">
+              <span>⎋</span> Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <header class="app-header">
+      <div>
+        <h1>Compose with AI</h1>
+        <p class="subtitle">LSTM neural network · Classical piano synthesis</p>
+      </div>
+      <div class="header-badge">
+        <span class="badge-dot"></span>
+        <span>Model Ready</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="control-panel">
+        <div class="panel-header">
+          <h2>Generation Parameters</h2>
+          <button id="resetBtn" class="btn-ghost" title="Reset to defaults">Reset</button>
+        </div>
+        <div class="controls-grid">
+          <div class="control-group">
+            <label for="temperature">
+              Temperature
+              <span class="value-badge" id="tempValue">0.80</span>
+            </label>
+            <input type="range" id="temperature" min="0.1" max="1.5" step="0.05" value="0.8">
+            <p class="control-hint">Higher = more creative, lower = more predictable</p>
+          </div>
+          <div class="control-group">
+            <label for="length">
+              Sequence Length
+              <span class="value-badge" id="lengthValue">24</span>
+            </label>
+            <input type="range" id="length" min="8" max="48" step="4" value="24">
+            <p class="control-hint">Number of note events to generate</p>
+          </div>
+          <div class="control-group">
+            <label for="seed">
+              Random Seed
+              <span class="value-badge" id="seedValue">42</span>
+            </label>
+            <input type="range" id="seed" min="0" max="999" step="1" value="42">
+            <p class="control-hint">Same seed = same output</p>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button id="generateBtn" class="btn btn-primary">
+            <span class="btn-icon">▶</span> Generate & Play
+          </button>
+          <button id="saveMidiBtn" class="btn btn-secondary">
+            <span class="btn-icon">⬇</span> Save MIDI
+          </button>
+          <button id="stopBtn" class="btn btn-secondary">
+            <span class="btn-icon">■</span> Stop
+          </button>
+        </div>
+      </section>
+
+      <section class="visualizer-section">
+        <div class="visualizer-header">
+          <h2>Piano Roll</h2>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch" style="background:#5b8aff"></span>Low velocity</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#ff9a5b"></span>High velocity</span>
+          </div>
+        </div>
+        <div class="canvas-wrapper">
+          <canvas id="pianoRollCanvas" width="900" height="220"></canvas>
+        </div>
+      </section>
+
+      <section class="history-section">
+        <div class="panel-header">
+          <h2>Generation History</h2>
+          <button id="clearHistoryInline" class="btn-ghost">Clear</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <p class="history-empty">No generations yet — click "Generate & Play" to create your first composition.</p>
+        </div>
+      </section>
+
+      <section class="status-bar">
+        <div class="status-indicator">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusMessage">Ready to generate</span>
+        </div>
+        <div class="status-stats">
+          <span class="stat"><strong id="noteCount">0</strong> notes</span>
+          <span class="stat-separator">·</span>
+          <span class="stat"><strong id="durationDisplay">0.0</strong>s</span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Deep learning model: 2‑layer LSTM pre‑trained on classical MIDI · Web Audio API</p>
+    </footer>
+  </div>
+
+  <div class="modal-overlay" id="editProfileModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Profile</h3>
+        <button class="modal-close" id="closeEditModal">✕</button>
+      </div>
+      <form id="editProfileForm">
+        <div class="form-group">
+          <label for="editName">Full Name</label>
+          <div class="input-wrap">
+            <span class="input-icon">👤</span>
+            <input type="text" id="editName" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="editEmail">Email</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉</span>
+            <input type="email" id="editEmail" required>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       AUTH API FOR STUDIO PAGE (must come BEFORE script.js)
+       ============================================================ -->
+  <script>
+    (function () {
+      function getSession() {
+        try { return JSON.parse(localStorage.getItem('aims_session') || 'null'); }
+        catch (e) { return null; }
+      }
+      function setSession(s) { localStorage.setItem('aims_session', JSON.stringify(s)); }
+
+      window.Auth = {
+        getCurrentUser: getSession,
+        signOut: function () { localStorage.removeItem('aims_session'); },
+        requireAuth: function () {
+          if (!getSession()) window.location.replace('index.html');
+        },
+        addHistoryEntry: function (entry) {
+          var session = getSession();
+          if (!session) return;
+          try {
+            var history = JSON.parse(localStorage.getItem('aims_history') || '[]');
+            history.unshift(Object.assign({
+              id: 'h_' + Date.now().toString(36),
+              userId: session.id,
+              timestamp: Date.now()
+            }, entry));
+            localStorage.setItem('aims_history', JSON.stringify(history.slice(0, 20)));
+          } catch (e) { console.error(e); }
+        },
+        getHistoryForUser: function () {
+          var session = getSession();
+          if (!session) return [];
+          try {
+            var history = JSON.parse(localStorage.getItem('aims_history') || '[]');
+            return history.filter(function (h) { return h.userId === session.id; });
+          } catch (e) { return []; }
+        },
+        clearHistory: function () {
+          var session = getSession();
+          if (!session) return;
+          try {
+            var history = JSON.parse(localStorage.getItem('aims_history') || '[]');
+            history = history.filter(function (h) { return h.userId !== session.id; });
+            localStorage.setItem('aims_history', JSON.stringify(history));
+          } catch (e) {}
+        },
+        getStats: function () {
+          var h = this.getHistoryForUser();
+          return {
+            total: h.length,
+            exports: h.filter(function (x) { return x.exported; }).length
+          };
+        },
+        getInitials: function (name) {
+          if (!name) return 'U';
+          var parts = name.trim().split(/\s+/);
+          if (parts.length === 1) return parts[0][0].toUpperCase();
+          return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        },
+        getAvatarStyle: function (email) {
+          var colors = [
+            'linear-gradient(135deg,#5b8aff,#8b6bff)',
+            'linear-gradient(135deg,#3dbb6b,#10b981)',
+            'linear-gradient(135deg,#f59e0b,#ef4444)',
+            'linear-gradient(135deg,#ec4899,#8b5cf6)',
+            'linear-gradient(135deg,#06b6d4,#3b82f6)'
+          ];
+          var idx = email
+            ? email.split('').reduce(function (a, c) { return a + c.charCodeAt(0); }, 0) % colors.length
+            : 0;
+          return colors[idx];
+        },
+        updateProfile: function (name, email) {
+          var session = getSession();
+          if (!session) return { success: false, error: 'Not signed in.' };
+          var users = [];
+          try { users = JSON.parse(localStorage.getItem('aims_users') || '[]'); } catch (e) {}
+          var normalizedEmail = email.trim().toLowerCase();
+          for (var i = 0; i < users.length; i++) {
+            if (users[i].email === normalizedEmail && users[i].id !== session.id) {
+              return { success: false, error: 'Email already in use.' };
+            }
+          }
+          var u = null;
+          for (var j = 0; j < users.length; j++) {
+            if (users[j].id === session.id) { u = users[j]; break; }
+          }
+          if (!u) return { success: false, error: 'User not found.' };
+          u.name = name.trim();
+          u.email = normalizedEmail;
+          localStorage.setItem('aims_users', JSON.stringify(users));
+          var updated = { id: session.id, name: u.name, email: u.email };
+          setSession(updated);
+          return { success: true, user: updated };
+        }
+      };
+    })();
+  </script>
+
+  <script src="model.js"></script>
+  <script src="script.js"></script>
+
+  <script>
+    (function () {
+      var session = null;
+      try {
+        session = JSON.parse(localStorage.getItem('aims_session') || 'null');
+      } catch (e) { session = null; }
+
+      if (!session) {
+        window.location.replace('index.html');
+        return;
+      }
+
+      var initials = Auth.getInitials(session.name);
+      var avatarStyle = Auth.getAvatarStyle(session.email);
+
+      var navAvatar = document.getElementById('navAvatar');
+      var dropdownAvatar = document.getElementById('dropdownAvatar');
+      var navUserName = document.getElementById('navUserName');
+      var dropdownName = document.getElementById('dropdownName');
+      var dropdownEmail = document.getElementById('dropdownEmail');
+
+      if (navAvatar) { navAvatar.textContent = initials; navAvatar.style.background = avatarStyle; }
+      if (dropdownAvatar) { dropdownAvatar.textContent = initials; dropdownAvatar.style.background = avatarStyle; }
+      if (navUserName) navUserName.textContent = session.name.split(' ')[0];
+      if (dropdownName) dropdownName.textContent = session.name;
+      if (dropdownEmail) dropdownEmail.textContent = session.email;
+
+      var profileTrigger = document.getElementById('profileTrigger');
+      var profileMenu = profileTrigger.closest('.profile-menu');
+
+      profileTrigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        profileMenu.classList.toggle('open');
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!profileMenu.contains(e.target)) profileMenu.classList.remove('open');
+      });
+
+      function refreshStats() {
+        var stats = Auth.getStats();
+        var s1 = document.getElementById('statTotalGenerated');
+        var s2 = document.getElementById('statSaved');
+        if (s1) s1.textContent = stats.total;
+        if (s2) s2.textContent = stats.exports;
+      }
+      refreshStats();
+      window.refreshProfileStats = refreshStats;
+
+      document.getElementById('logoutBtn').addEventListener('click', function () {
+        if (confirm('Sign out of AI Music Studio?')) {
+          Auth.signOut();
+          window.location.href = 'index.html';
+        }
+      });
+
+      document.getElementById('clearHistoryBtn').addEventListener('click', function () {
+        if (confirm('Clear all generation history?')) {
+          Auth.clearHistory();
+          refreshStats();
+          if (typeof window.renderHistory === 'function') window.renderHistory();
+        }
+      });
+
+      var editModal = document.getElementById('editProfileModal');
+      var editName = document.getElementById('editName');
+      var editEmail = document.getElementById('editEmail');
+
+      document.getElementById('editProfileBtn').addEventListener('click', function () {
+        profileMenu.classList.remove('open');
+        editName.value = session.name;
+        editEmail.value = session.email;
+        editModal.classList.add('active');
+      });
+
+      function closeModal() { editModal.classList.remove('active'); }
+
+      document.getElementById('closeEditModal').addEventListener('click', closeModal);
+      document.getElementById('cancelEdit').addEventListener('click', closeModal);
+      editModal.addEventListener('click', function (e) {
+        if (e.target === editModal) closeModal();
+      });
+
+      document.getElementById('editProfileForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var newName = editName.value.trim();
+        var newEmail = editEmail.value.trim();
+
+        if (!newName || !newEmail) { alert('Please fill in all fields.'); return; }
+
+        var result = Auth.updateProfile(newName, newEmail);
+        if (result.success) {
+          session = result.user;
+          var newInitials = Auth.getInitials(session.name);
+          var newAvatarStyle = Auth.getAvatarStyle(session.email);
+
+          if (navAvatar) { navAvatar.textContent = newInitials; navAvatar.style.background = newAvatarStyle; }
+          if (dropdownAvatar) { dropdownAvatar.textContent = newInitials; dropdownAvatar.style.background = newAvatarStyle; }
+          if (navUserName) navUserName.textContent = session.name.split(' ')[0];
+          if (dropdownName) dropdownName.textContent = session.name;
+          if (dropdownEmail) dropdownEmail.textContent = session.email;
+
+          closeModal();
+          alert('Profile updated successfully!');
+        } else {
+          alert(result.error);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

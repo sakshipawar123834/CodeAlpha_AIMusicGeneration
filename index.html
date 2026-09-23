@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Music Studio · Sign In</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-icon">♪</div>
+        <h1>AI Music Studio</h1>
+        <p class="brand-tagline">Compose with artificial intelligence</p>
+      </div>
+
+      <div id="sessionBanner"></div>
+
+      <div class="login-tabs">
+        <button type="button" class="tab-btn active" id="tabSignin" onclick="showSigninTab()">Sign In</button>
+        <button type="button" class="tab-btn" id="tabSignup" onclick="showSignupTab()">Sign Up</button>
+      </div>
+
+      <div id="authAlert" style="display:none; padding:0.75rem 1rem; border-radius:14px; font-size:0.85rem; margin-bottom:1rem;"></div>
+
+      <!-- SIGN IN FORM -->
+      <form id="signinForm" style="display:block;" onsubmit="handleSignin(event)">
+        <div class="form-group">
+          <label>Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉</span>
+            <input type="email" id="signinEmail" placeholder="you@example.com">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="signinPassword" placeholder="••••••••">
+            <button type="button" class="toggle-password" onclick="togglePassword('signinPassword', this)">👁</button>
+          </div>
+        </div>
+        <button type="submit" class="btn-auth">Sign In →</button>
+        <p class="auth-hint">Demo: any email & password (min 6 chars)</p>
+      </form>
+
+      <!-- SIGN UP FORM -->
+      <form id="signupForm" style="display:none;" onsubmit="handleSignup(event)">
+        <div class="form-group">
+          <label>Full Name</label>
+          <div class="input-wrap">
+            <span class="input-icon">👤</span>
+            <input type="text" id="signupName" placeholder="John Doe">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉</span>
+            <input type="email" id="signupEmail" placeholder="you@example.com">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="signupPassword" placeholder="Min 6 characters">
+            <button type="button" class="toggle-password" onclick="togglePassword('signupPassword', this)">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="signupConfirm" placeholder="Repeat password">
+          </div>
+        </div>
+        <button type="submit" class="btn-auth">Create Account ✨</button>
+        <p class="auth-hint">Your data stays in your browser only.</p>
+      </form>
+
+      <div class="login-footer">
+        <p>Protected by client-side demo auth · No server required</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // Inline Auth for login page
+    // ============================================================
+
+    function showSigninTab() {
+      document.getElementById('signinForm').style.display = 'block';
+      document.getElementById('signupForm').style.display = 'none';
+      document.getElementById('tabSignin').classList.add('active');
+      document.getElementById('tabSignup').classList.remove('active');
+      clearAlert();
+    }
+
+    function showSignupTab() {
+      document.getElementById('signinForm').style.display = 'none';
+      document.getElementById('signupForm').style.display = 'block';
+      document.getElementById('tabSignin').classList.remove('active');
+      document.getElementById('tabSignup').classList.add('active');
+      clearAlert();
+    }
+
+    function togglePassword(inputId, btn) {
+      var input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+      }
+    }
+
+    function showAlert(msg, type) {
+      type = type || 'error';
+      var el = document.getElementById('authAlert');
+      el.textContent = msg;
+      el.style.display = 'block';
+      if (type === 'error') {
+        el.style.background = 'rgba(239,68,68,0.15)';
+        el.style.color = '#fca5a5';
+        el.style.border = '1px solid rgba(239,68,68,0.4)';
+      } else {
+        el.style.background = 'rgba(61,187,107,0.15)';
+        el.style.color = '#6ee7a0';
+        el.style.border = '1px solid rgba(61,187,107,0.4)';
+      }
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { el.style.display = 'none'; }, 5000);
+    }
+
+    function clearAlert() {
+      var el = document.getElementById('authAlert');
+      el.style.display = 'none';
+    }
+
+    function getUsers() {
+      try {
+        return JSON.parse(localStorage.getItem('aims_users') || '[]');
+      } catch (e) { return []; }
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem('aims_users', JSON.stringify(users));
+    }
+
+    function getSession() {
+      try {
+        return JSON.parse(localStorage.getItem('aims_session') || 'null');
+      } catch (e) { return null; }
+    }
+
+    function setSession(s) {
+      localStorage.setItem('aims_session', JSON.stringify(s));
+    }
+
+    function simpleHash(str) {
+      var hash = 0;
+      for (var i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return 'h_' + Math.abs(hash).toString(36);
+    }
+
+    function handleSignin(e) {
+      e.preventDefault();
+      var email = document.getElementById('signinEmail').value.trim().toLowerCase();
+      var password = document.getElementById('signinPassword').value;
+
+      if (!email) { showAlert('Please enter your email.'); return; }
+      if (!password || password.length < 6) { showAlert('Password must be at least 6 characters.'); return; }
+
+      var users = getUsers();
+      var user = null;
+      for (var i = 0; i < users.length; i++) {
+        if (users[i].email === email) { user = users[i]; break; }
+      }
+
+      if (!user) { showAlert('No account found. Please sign up first.'); return; }
+      if (user.passwordHash !== simpleHash(password)) { showAlert('Incorrect password.'); return; }
+
+      setSession({ id: user.id, name: user.name, email: user.email });
+      showAlert('Signing in...', 'success');
+      setTimeout(function () { window.location.href = 'studio.html'; }, 500);
+    }
+
+    function handleSignup(e) {
+      e.preventDefault();
+      var name = document.getElementById('signupName').value.trim();
+      var email = document.getElementById('signupEmail').value.trim().toLowerCase();
+      var password = document.getElementById('signupPassword').value;
+      var confirm = document.getElementById('signupConfirm').value;
+
+      if (!name) { showAlert('Please enter your full name.'); return; }
+      if (!email) { showAlert('Please enter your email.'); return; }
+
+      var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) { showAlert('Please enter a valid email address.'); return; }
+
+      if (!password || password.length < 6) { showAlert('Password must be at least 6 characters.'); return; }
+      if (password !== confirm) { showAlert('Passwords do not match.'); return; }
+
+      var users = getUsers();
+      for (var i = 0; i < users.length; i++) {
+        if (users[i].email === email) {
+          showAlert('An account with this email already exists.');
+          return;
+        }
+      }
+
+      var newUser = {
+        id: 'u_' + Date.now().toString(36),
+        name: name,
+        email: email,
+        passwordHash: simpleHash(password),
+        createdAt: Date.now()
+      };
+
+      users.push(newUser);
+      saveUsers(users);
+      setSession({ id: newUser.id, name: newUser.name, email: newUser.email });
+
+      showAlert('Account created! Redirecting...', 'success');
+      setTimeout(function () { window.location.href = 'studio.html'; }, 800);
+    }
+
+    // ---------- Show banner if already logged in (no forced redirect) ----------
+    (function () {
+      var existing = getSession();
+      if (existing) {
+        var banner = document.getElementById('sessionBanner');
+        banner.style.cssText = 'background:rgba(91,138,255,0.15);border:1px solid rgba(91,138,255,0.4);color:#a5c0ff;padding:0.75rem 1rem;border-radius:14px;margin-bottom:1rem;font-size:0.82rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;';
+        banner.innerHTML =
+          '<span>Already signed in as <strong>' + existing.email + '</strong></span>' +
+          '<span style="display:flex;gap:0.5rem;">' +
+          '<button type="button" id="continueBtn" style="background:#5b8aff;border:none;color:white;padding:0.4rem 0.9rem;border-radius:50px;font-size:0.75rem;font-weight:600;cursor:pointer;">Continue →</button>' +
+          '<button type="button" id="signoutBannerBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:#a5c0ff;padding:0.4rem 0.9rem;border-radius:50px;font-size:0.75rem;cursor:pointer;">Sign Out</button>' +
+          '</span>';
+
+        document.getElementById('continueBtn').addEventListener('click', function () {
+          window.location.href = 'studio.html';
+        });
+        document.getElementById('signoutBannerBtn').addEventListener('click', function () {
+          localStorage.removeItem('aims_session');
+          location.reload();
+        });
+      }
+    })();
+
+    // Expose Auth globally
+    window.Auth = {
+      getCurrentUser: getSession,
+      signOut: function () { localStorage.removeItem('aims_session'); },
+      requireAuth: function () {
+        if (!getSession()) window.location.replace('index.html');
+      },
+      addHistoryEntry: function (entry) {
+        var session = getSession();
+        if (!session) return;
+        try {
+          var history = JSON.parse(localStorage.getItem('aims_history') || '[]');
+          history.unshift(Object.assign({
+            id: 'h_' + Date.now().toString(36),
+            userId: session.id,
+            timestamp: Date.now()
+          }, entry));
+          localStorage.setItem('aims_history', JSON.stringify(history.slice(0, 20)));
+        } catch (e) { console.error(e); }
+      },
+      getHistoryForUser: function () {
+        var session = getSession();
+        if (!session) return [];
+        try {
+          var history = JSON.parse(localStorage.getItem('aims_history') || '[]');
+          return history.filter(function (h) { return h.userId === session.id; });
+        } catch (e) { return []; }
+      },
+      clearHistory: function () {
+        var session = getSession();
+        if (!session) return;
+        try {
+          var history = JSON.parse(localStorage.getItem('aims_history') || '[]');
+          history = history.filter(function (h) { return h.userId !== session.id; });
+          localStorage.setItem('aims_history', JSON.stringify(history));
+        } catch (e) {}
+      },
+      getStats: function () {
+        var h = this.getHistoryForUser();
+        return {
+          total: h.length,
+          exports: h.filter(function (x) { return x.exported; }).length
+        };
+      },
+      getInitials: function (name) {
+        if (!name) return 'U';
+        var parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0][0].toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      },
+      getAvatarStyle: function (email) {
+        var colors = [
+          'linear-gradient(135deg,#5b8aff,#8b6bff)',
+          'linear-gradient(135deg,#3dbb6b,#10b981)',
+          'linear-gradient(135deg,#f59e0b,#ef4444)',
+          'linear-gradient(135deg,#ec4899,#8b5cf6)',
+          'linear-gradient(135deg,#06b6d4,#3b82f6)'
+        ];
+        var idx = email
+          ? email.split('').reduce(function (a, c) { return a + c.charCodeAt(0); }, 0) % colors.length
+          : 0;
+        return colors[idx];
+      },
+      updateProfile: function (name, email) {
+        var session = getSession();
+        if (!session) return { success: false, error: 'Not signed in.' };
+        var users = getUsers();
+        var normalizedEmail = email.trim().toLowerCase();
+        for (var i = 0; i < users.length; i++) {
+          if (users[i].email === normalizedEmail && users[i].id !== session.id) {
+            return { success: false, error: 'Email already in use.' };
+          }
+        }
+        var u = null;
+        for (var j = 0; j < users.length; j++) {
+          if (users[j].id === session.id) { u = users[j]; break; }
+        }
+        if (!u) return { success: false, error: 'User not found.' };
+        u.name = name.trim();
+        u.email = normalizedEmail;
+        saveUsers(users);
+        var updated = { id: session.id, name: u.name, email: u.email };
+        setSession(updated);
+        return { success: true, user: updated };
+      }
+    };
+  </script>
+</body>
+</html>
